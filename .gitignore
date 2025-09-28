@@ -1,0 +1,15 @@
+# Build output
+dist/
+build/
+
+# Node.js dependencies
+node_modules/
+
+# Local dev cache
+.vite/
+.cache/
+*.log
+
+# OS specific
+.DS_Store
+Thumbs.db
