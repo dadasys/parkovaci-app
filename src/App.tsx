@@ -170,7 +170,22 @@ export default function App() {
 
   const handleReserve = async (place: number, day: string, time: string, date: Date) => {
     if (!currentUser) return;
+
     const key = `${day} ${time} ${weekOffset}`;
+
+    // ✅ Kontrola, zda uživatel už nemá rezervaci ve stejný den/čas
+    const alreadyReserved = reservations.find(
+      (r) =>
+        r.userId === currentUser.id &&
+        r.time_slot === time &&
+        r.date === date.toISOString().split("T")[0]
+    );
+
+    if (alreadyReserved) {
+      alert("..ani to nezkoušej..");
+      return;
+    }
+
     const exists = reservations.find((r) => r.place === place && r.time === key);
     if (exists) return;
 
