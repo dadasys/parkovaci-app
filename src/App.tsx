@@ -19,8 +19,10 @@ interface User {
 interface Reservation {
   id: number;
   place: number;
-  time: string;
+  time: string;         // původní klíč (ponecháme pro zpětnou kompatibilitu)
   userId: number;
+  date?: string;        // nový sloupec v DB
+  time_slot?: string;   // nový sloupec v DB
 }
 
 const times = ["7-13", "13-00"] as const;
@@ -38,6 +40,7 @@ function getWeekDates(weekOffset: number) {
     return d;
   });
 }
+
 function getWeekRangeLabel(weekOffset: number) {
   const dates = getWeekDates(weekOffset);
   const monday = dates[0];
@@ -165,13 +168,24 @@ export default function App() {
     else setLoginError("Neplatné jméno nebo heslo");
   };
 
-  const handleReserve = async (place: number, day: string, time: string) => {
+  const handleReserve = async (place: number, day: string, time: string, date: Date) => {
     if (!currentUser) return;
     const key = `${day} ${time} ${weekOffset}`;
     const exists = reservations.find((r) => r.place === place && r.time === key);
     if (exists) return;
-    const { data, error } = await supabase.from("reservations").insert([{ place, time: key, userId: currentUser.id }]).select();
-    if (error) { alert(error.message); return; }
+
+    const { data, error } = await supabase.from("reservations").insert([{
+      place,
+      time: key,
+      userId: currentUser.id,
+      date: date.toISOString().split("T")[0],
+      time_slot: time
+    }]).select();
+
+    if (error) {
+      alert(error.message);
+      return;
+    }
     if (data) setReservations([...reservations, ...(data as Reservation[])]);
   };
 
@@ -181,7 +195,10 @@ export default function App() {
     if (!reservation) return;
     if (reservation.userId !== currentUser.id && currentUser.role !== "admin") return;
     const { error } = await supabase.from("reservations").delete().eq("id", id);
-    if (error) { alert(error.message); return; }
+    if (error) {
+      alert(error.message);
+      return;
+    }
     setReservations(reservations.filter((r) => r.id !== id));
   };
 
@@ -248,7 +265,7 @@ export default function App() {
                             )}
                           </>
                         ) : (
-                          <button className="btn btn-success" onClick={() => handleReserve(place, day, time)}>Rezervovat</button>
+                          <button className="btn btn-success" onClick={() => handleReserve(place, day, time, weekDates[i])}>Rezervovat</button>
                         )}
                       </div>
                     );
