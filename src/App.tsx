@@ -19,10 +19,10 @@ interface User {
 interface Reservation {
   id: number;
   place: number;
-  time: string;         // původní klíč (ponecháme pro zpětnou kompatibilitu)
+  time: string;
   userId: number;
-  date?: string;        // nový sloupec v DB
-  time_slot?: string;   // nový sloupec v DB
+  date?: string;
+  time_slot?: string;
 }
 
 const times = ["7-13", "13-00"] as const;
@@ -46,6 +46,24 @@ function getWeekRangeLabel(weekOffset: number) {
   const monday = dates[0];
   const friday = dates[4];
   return `${monday.toLocaleDateString("cs-CZ")} - ${friday.toLocaleDateString("cs-CZ")}`;
+}
+
+// Pomocná funkce: rozdíl v pracovních dnech mezi dvěma daty
+function getWorkingDaysDiff(from: Date, to: Date): number {
+  let count = 0;
+  const d = new Date(from);
+  d.setHours(0, 0, 0, 0);
+  const target = new Date(to);
+  target.setHours(0, 0, 0, 0);
+
+  while (d < target) {
+    d.setDate(d.getDate() + 1);
+    const day = d.getDay();
+    if (day !== 0 && day !== 6) { // vynechat víkendy
+      count++;
+    }
+  }
+  return count;
 }
 
 function LoginView({ onLogin, error, users }: { onLogin: (u: string, p: string) => void; error: string | null; users: User[] }) {
@@ -170,6 +188,14 @@ export default function App() {
 
   const handleReserve = async (place: number, day: string, time: string, date: Date) => {
     if (!currentUser) return;
+
+    // 🔸 Kontrola max. 2 pracovních dnů dopředu pro neprioritní uživatele
+    const workingDiff = getWorkingDaysDiff(new Date(), date);
+    if (!currentUser.priority && workingDiff > 2) {
+      alert("Neprioritní uživatel může rezervovat maximálně 2 pracovní dny dopředu.");
+      return;
+    }
+
     const key = `${day} ${time} ${weekOffset}`;
     const exists = reservations.find((r) => r.place === place && r.time === key);
     if (exists) return;
