@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Rozdělení parkovacích míst</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background: #f3f4f6;
+      margin: 0;
+      padding: 0;
+    }
+    header {
+      background: #2563eb;
+      color: white;
+      padding: 15px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    header h1 {
+      font-size: 20px;
+      margin: 0;
+      flex: 1 1 100%;
+      text-align: center;
+    }
+    .header-buttons {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      width: 100%;
+      margin-top: 10px;
+    }
+    .header-buttons a {
+      background: white;
+      color: #2563eb;
+      text-decoration: none;
+      padding: 8px 14px;
+      border-radius: 8px;
+      font-weight: 500;
+      transition: background 0.2s;
+    }
+    .header-buttons a:hover {
+      background: #e0e7ff;
+    }
+
+    .container {
+      max-width: 1100px;
+      margin: 30px auto;
+      padding: 0 20px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 20px;
+    }
+
+    .section {
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .section-header {
+      padding: 10px 15px;
+      color: white;
+      font-weight: 600;
+    }
+    .place-1 { background: #1e3a8a; }
+    .place-2 { background: #3b82f6; }
+    .place-3 { background: #1e40af; }
+    .place-4 { background: #60a5fa; color: black; }
+    .place-5 { background: #2563eb; }
+    .place-6 { background: #93c5fd; color: black; }
+
+    ul {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+    li {
+      padding: 8px 12px;
+      border-bottom: 1px solid #e5e7eb;
+    }
+    li:nth-child(even) {
+      background: #f9fafb;
+    }
+
+    .rules {
+      max-width: 800px;
+      margin: 40px auto;
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+      padding: 20px;
+    }
+    .rules h2 {
+      margin-top: 0;
+      color: #2563eb;
+      text-align: center;
+    }
+    .rules ul {
+      list-style: disc;
+      padding-left: 20px;
+    }
+    .rules li {
+      margin-bottom: 8px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Rozdělení parkovacích míst</h1>
+    <div class="header-buttons">
+      <a href="vyveska.html">Přehled rezervací</a>
+      <a href="index.html">Přejít do aplikace</a>
+    </div>
+  </header>
+
+  <div class="container">
+    <div class="section">
+      <div class="section-header place-1">Parkovací místo 1</div>
+      <ul>
+        <li><strong>Bartoš Vratislav</strong></li>
+        <li>Peremský Petr</li>
+        <li>Plachý Martin</li>
+        <li>Škardová Kateřina</li>
+        <li>Zpěvák Martin</li>
+        <li>Med Štěpán</li>
+      </ul>
+    </div>
+
+    <div class="section">
+      <div class="section-header place-2">Parkovací místo 2</div>
+      <ul>
+        <li><strong>Jurníček Lubomír</strong></li>
+        <li>Fárek David</li>
+        <li>Švingr Zdeněk</li>
+        <li>Halamová Markéta</li>
+      </ul>
+    </div>
+
+    <div class="section">
+      <div class="section-header place-3">Parkovací místo 3</div>
+      <ul>
+        <li><strong>Sýs David</strong></li>
+        <li>Sýsová Gabriela</li>
+        <li>Pacák Vojtěch</li>
+        <li>Triebenekl Jan</li>
+        <li>Vytiska Miroslav</li>
+      </ul>
+    </div>
+
+    <div class="section">
+      <div class="section-header place-4">Parkovací místo 4</div>
+      <ul>
+        <li><strong>Blažek Daniel</strong></li>
+        <li>Srbený Richard</li>
+        <li>Zajíc Pavel</li>
+        <li>Jírů Jakub</li>
+        <li>Časarová Mirka</li>
+        <li>Kořínek Vít</li>
+      </ul>
+    </div>
+
+    <div class="section">
+      <div class="section-header place-5">Parkovací místo 5</div>
+      <ul>
+        <li><strong>Jirásek Pavel</strong></li>
+        <li>Dekoj Viktor</li>
+        <li>Chmelař Martin</li>
+        <li>Šťastný Jaroslav</li>
+      </ul>
+    </div>
+
+    <div class="section">
+      <div class="section-header place-6">Parkovací místo 6</div>
+      <ul>
+        <li><strong>Hlubuček Pavel</strong></li>
+        <li>Klazar Tomáš</li>
+        <li>Palowski Karel</li>
+        <li>Tomášek Josef</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="rules">
+    <h2>Pravidla</h2>
+    <ul>
+      <li>přednost parkování mají prioritní auta</li>
+      <li>pokud je možnost NV a zároveň služební hra, přednost parkování mají její účastníci</li>
+      <li>každému park. místu jsme přiřadili auta ze zhruba stejného směru, pro případné noční rozvážení atp., v rámci skupiny se prosím domlouvejte, kdo parkuje</li>
+      <li>rezervujte prosím nejpozději den před rezervací do 19:00</li>
+    </ul>
+  </div>
+</body>
+</html>
