@@ -151,7 +151,7 @@
             div.innerHTML = `<span class="num">${p}</span>`;
 
             if(r){
-              const u = users.find(u=> u.id===r.userId);
+             const u = users.find(u=> u.id===r.userId);
               div.classList.add(u?.priority ? "prio" : "npr");
               div.innerHTML += `${u?.name || u?.username || "?"} ${u?.spz?`(${u.spz})`:""}${u?.priority?" prioritní":""}`;
             }else{
