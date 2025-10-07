@@ -4,212 +4,173 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Přehled rezervací</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
-    body {
+    :root{ --scale:1; }
+    /* škálování celé tabule, aby se na výšku vešla beze změny layoutu */
+    .scale-wrap{
+      transform: scale(var(--scale));
+      transform-origin: top center;
+      /* šířku „vrátíme“ zpět, aby se po scale vešlo na viewport */
+      width: calc(100% / var(--scale));
+    }
+    /* breakpoints – jen měníme scale, layout zůstává stejný */
+    @media (max-width: 1024px){ :root{ --scale: .9; } }
+    @media (max-width: 900px) { :root{ --scale: .85; } }
+    @media (max-width: 768px) { :root{ --scale: .8; } }
+    @media (max-width: 640px) { :root{ --scale: .72; } }
+    @media (max-width: 480px) { :root{ --scale: .65; } }
+
+    body{
       font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-      background: #f3f4f6;
-      margin: 0;
-      padding: 0;
+      background:#f3f4f6; margin:0;
     }
-    header {
-      background: #2563eb;
-      color: white;
-      padding: 15px 20px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
+    header{
+      background:#2563eb; color:#fff; padding:14px 16px;
+      display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center;
     }
-    header h1 {
-      font-size: 20px;
-      margin: 0;
+    header h1{ margin:0 auto; font-size:20px; font-weight:700; }
+    .header-buttons{ display:flex; gap:10px; }
+    .header-buttons a{
+      background:#fff; color:#2563eb; text-decoration:none; padding:8px 14px;
+      border-radius:8px; font-weight:600;
     }
-    header a {
-      background: white;
-      color: #2563eb;
-      text-decoration: none;
-      padding: 8px 14px;
-      border-radius: 8px;
-      font-weight: 500;
-      transition: background 0.2s;
+    .header-buttons a:hover{ background:#e0e7ff; }
+
+    .weekbar{
+      display:flex; justify-content:center; align-items:center; gap:10px; margin:14px 0;
     }
-    header a:hover {
-      background: #e0e7ff;
+    .weekbar button{
+      background:#2563eb; color:#fff; border:none; padding:6px 10px; border-radius:6px; cursor:pointer;
+    }
+    .weekbar strong{ color:#111827; }
+
+    /* DESKTOP layout – přesně 5 sloupců jako teď */
+    .board{
+      margin:0 auto; padding:0 12px 24px;
+      display:grid; grid-template-columns: repeat(5, 220px);
+      gap:14px; width:max-content;
     }
 
-    .weekbar {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      margin: 20px 0;
-      gap: 10px;
+    .day{
+      background:#fff; border-radius:12px; box-shadow:0 2px 6px rgba(0,0,0,.08);
+      padding:10px; width:220px;
     }
-    .weekbar button {
-      background: #2563eb;
-      color: white;
-      border: none;
-      padding: 8px 12px;
-      border-radius: 6px;
-      cursor: pointer;
+    .day h3{
+      margin:0 0 8px; text-align:center; color:#1e3a8a; font-size:16px; line-height:1.2;
+    }
+    .slot{ margin-top:8px; }
+    .slot .cap{
+      text-align:center; color:#1e3a8a; font-weight:700; margin-bottom:6px; font-size:13px;
     }
 
-    .grid {
-      display: grid;
-      grid-template-columns: repeat(5, 1fr);
-      gap: 10px;
-      max-width: 1200px;
-      margin: 0 auto;
+    .place{
+      border:1px solid #e5e7eb; border-radius:8px; padding:6px 8px; margin:6px 0;
+      display:flex; align-items:center; justify-content:center; height:36px;
+      background:#fff; font-size:13px;
     }
-    .day-card {
-      background: white;
-      border-radius: 10px;
-      box-shadow: 0 4px 8px rgba(0,0,0,0.05);
-      padding: 10px;
-    }
-    .day-card h4 {
-      text-align: center;
-      margin-top: 0;
-      background: #2563eb;
-      color: white;
-      border-radius: 6px;
-      padding: 5px;
-      font-size: 15px;
-    }
+    .place .num{ font-weight:700; margin-right:6px; }
 
-    .slot {
-      margin-top: 5px;
-    }
-    .slot strong {
-      display: block;
-      margin-bottom: 5px;
-    }
-    .place {
-      border: 1px solid #e5e7eb;
-      border-radius: 6px;
-      padding: 4px 6px;
-      margin-bottom: 4px;
-      font-size: 14px;
-    }
-    .place.priority {
-      background: #facc15; /* tmavší žlutá */
-    }
-    .place.non-priority {
-      background: #fef9c3; /* světle žlutá */
-    }
-    .place.free {
-      background: #86efac; /* zelená */
-      color: #14532d;
-      text-align: center;
-      font-weight: 500;
-    }
+    .volno{ background:#bbf7d0; }          /* zelené volno */
+    .prio{ background:#fde047; }           /* tmavší žlutá – prioritní */
+    .npr  { background:#fef9c3; }          /* světlejší žlutá – neprioritní */
   </style>
 </head>
 <body>
   <header>
+    <div style="width:110px"></div>
     <h1>Přehled rezervací</h1>
-    <a href="index.html">Přejít do aplikace</a>
+    <div class="header-buttons">
+      <a href="index.html">Přejít do aplikace</a>
+      <a href="pravidla.html">Pravidla</a>
+    </div>
   </header>
 
-  <div class="weekbar">
-    <button id="prevWeek">◀️ Předchozí týden</button>
-    <strong id="weekRange"></strong>
-    <button id="nextWeek">Následující týden ▶️</button>
+  <div class="scale-wrap">
+    <div class="weekbar">
+      <button id="prevWeek">◀️ Předchozí týden</button>
+      <strong id="weekRange"></strong>
+      <button id="nextWeek">Následující týden ▶️</button>
+    </div>
+
+    <div class="board" id="board">Načítám…</div>
   </div>
 
-  <div class="grid" id="grid"></div>
-
-  <script type="module">
-    import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
-
+  <script>
+    // === Supabase ===
     const supabaseUrl = "https://cndtzwoioigzninoslbs.supabase.co";
     const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNuZHR6d29pb2lnem5pbm9zbGJzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg5OTMyODAsImV4cCI6MjA3NDU2OTI4MH0.aGHIGpSW3HZCcEZnIlAr8gmlc-fOWHs2dSXuINxn5x0";
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
 
-    const days = ["Pondělí", "Úterý", "Středa", "Čtvrtek", "Pátek"];
-    const times = ["7-13", "13-00"];
-    const places = [1, 2, 3, 4, 5, 6];
+    const days = ["Pondělí","Úterý","Středa","Čtvrtek","Pátek"];
+    const times = ["7-13","13-00"];
+    const places = [1,2,3,4,5,6];
 
     let weekOffset = 0;
 
-    function getWeekDates(offset) {
-      const start = new Date();
-      const day = start.getDay();
-      const diff = start.getDate() - day + (day === 0 ? -6 : 1) + offset * 7;
-      const monday = new Date(start.setDate(diff));
-      return Array.from({ length: 5 }, (_, i) => {
-        const d = new Date(monday);
-        d.setDate(monday.getDate() + i);
-        return d;
-      });
+    function getWeekDates(ofs=0){
+      const d = new Date();
+      const day = d.getDay();
+      const diff = d.getDate() - day + (day===0?-6:1) + ofs*7; // pondělí
+      const mon = new Date(d.setDate(diff));
+      return Array.from({length:5}, (_,i)=>{ const x=new Date(mon); x.setDate(mon.getDate()+i); return x; });
+    }
+    function fmtDateISO(dt){ return dt.toISOString().split("T")[0]; }
+    function setWeekLabel(){
+      const w = getWeekDates(weekOffset);
+      weekRange.textContent = `${w[0].toLocaleDateString("cs-CZ")} - ${w[4].toLocaleDateString("cs-CZ")}`;
     }
 
-    function getWeekRangeLabel(offset) {
-      const dates = getWeekDates(offset);
-      const monday = dates[0];
-      const friday = dates[4];
-      return `${monday.toLocaleDateString("cs-CZ")} - ${friday.toLocaleDateString("cs-CZ")}`;
-    }
+    async function load(){
+      const board = document.getElementById("board");
+      board.textContent = "Načítám…";
+      const [{data:res=[]},{data:users=[]}] = await Promise.all([
+        supabase.from("reservations").select("*"),
+        supabase.from("users").select("*")
+      ]);
 
-    async function loadReservations() {
-      const { data: reservations } = await supabase.from("reservations").select("*");
-      const { data: users } = await supabase.from("users").select("*");
-      renderGrid(reservations || [], users || []);
-    }
+      const week = getWeekDates(weekOffset);
+      board.innerHTML = "";
 
-    function renderGrid(reservations, users) {
-      const container = document.getElementById("grid");
-      container.innerHTML = "";
-      const weekDates = getWeekDates(weekOffset);
+      days.forEach((dayName, i)=>{
+        const dateISO = fmtDateISO(week[i]);
 
-      document.getElementById("weekRange").textContent = getWeekRangeLabel(weekOffset);
+        const day = document.createElement("div");
+        day.className = "day";
+        day.innerHTML = `<h3>${dayName}<br>${week[i].toLocaleDateString("cs-CZ")}</h3>`;
 
-      days.forEach((day, i) => {
-        const dayCard = document.createElement("div");
-        dayCard.className = "day-card";
-        dayCard.innerHTML = `<h4>${day}<br>${weekDates[i].toLocaleDateString("cs-CZ")}</h4>`;
+        times.forEach(t=>{
+          const slot = document.createElement("div");
+          slot.className = "slot";
+          slot.innerHTML = `<div class="cap">${t}</div>`;
 
-        times.forEach(time => {
-          const slotDiv = document.createElement("div");
-          slotDiv.className = "slot";
-          slotDiv.innerHTML = `<strong>${time}</strong>`;
-
-          places.forEach(place => {
-            const dateStr = weekDates[i].toISOString().split("T")[0];
-            const r = reservations.find(res => res.place === place && res.date === dateStr && res.time_slot === time);
+          places.forEach(p=>{
+            const r = res.find(r=> r.place===p && r.date===dateISO && r.time_slot===t);
             const div = document.createElement("div");
             div.className = "place";
+            div.innerHTML = `<span class="num">${p}</span>`;
 
-            if (r) {
-              const u = users.find(u => u.id === r.userId);
-              div.textContent = `${u?.name || u?.username || "Neznámý"} (${u?.spz || ""})`;
-              if (u?.priority) {
-                div.classList.add("priority");
-              } else {
-                div.classList.add("non-priority");
-              }
-            } else {
-              div.textContent = "volno";
-              div.classList.add("free");
+            if(r){
+              const u = users.find(u=> u.id===r.userId);
+              div.classList.add(u?.priority ? "prio" : "npr");
+              div.innerHTML += `${u?.name || u?.username || "?"} ${u?.spz?`(${u.spz})`:""}${u?.priority?" prioritní":""}`;
+            }else{
+              div.classList.add("volno");
+              div.innerHTML += `Volno`;
             }
-            slotDiv.appendChild(div);
+            slot.appendChild(div);
           });
 
-          dayCard.appendChild(slotDiv);
+          day.appendChild(slot);
         });
 
-        container.appendChild(dayCard);
+        board.appendChild(day);
       });
     }
 
-    document.getElementById("prevWeek").addEventListener("click", () => {
-      weekOffset--;
-      loadReservations();
-    });
-    document.getElementById("nextWeek").addEventListener("click", () => {
-      weekOffset++;
-      loadReservations();
-    });
-
-    loadReservations();
+    prevWeek.onclick = ()=>{ weekOffset--; setWeekLabel(); load(); };
+    nextWeek.onclick = ()=>{ weekOffset++; setWeekLabel(); load(); };
+    setWeekLabel(); load();
   </script>
 </body>
 </html>
