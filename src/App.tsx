@@ -19,10 +19,9 @@ interface User {
 interface Reservation {
   id: number;
   place: number;
-  time: string;
+  date: string;
+  time_slot: string;
   userId: number;
-  date?: string;
-  time_slot?: string;
 }
 
 const times = ["7-13", "13-00"] as const;
@@ -48,20 +47,17 @@ function getWeekRangeLabel(weekOffset: number) {
   return `${monday.toLocaleDateString("cs-CZ")} - ${friday.toLocaleDateString("cs-CZ")}`;
 }
 
-// Pomocná funkce: rozdíl v pracovních dnech mezi dvěma daty
+// počet pracovních dnů mezi dvěma daty
 function getWorkingDaysDiff(from: Date, to: Date): number {
   let count = 0;
   const d = new Date(from);
   d.setHours(0, 0, 0, 0);
   const target = new Date(to);
   target.setHours(0, 0, 0, 0);
-
   while (d < target) {
     d.setDate(d.getDate() + 1);
     const day = d.getDay();
-    if (day !== 0 && day !== 6) { // vynechat víkendy
-      count++;
-    }
+    if (day !== 0 && day !== 6) count++;
   }
   return count;
 }
@@ -111,56 +107,6 @@ function LoginView({ onLogin, error, users }: { onLogin: (u: string, p: string) 
   );
 }
 
-function UserAdmin({ users, setUsers }: { users: User[]; setUsers: (u: User[]) => void }) {
-  const handleLocalChange = (id: number, field: keyof User, value: any) => {
-    setUsers(users.map((u) => (u.id === id ? { ...u, [field]: value } : u)));
-  };
-  const handlePersist = async (user: User, field: keyof User) => {
-    const { error } = await supabase.from("users").update({ [field]: (user as any)[field] }).eq("id", user.id);
-    if (error) alert("Chyba ukládání: " + error.message);
-  };
-  return (
-    <div className="container">
-      <div className="header">
-        <h2>Správa uživatelů</h2>
-      </div>
-      <div className="card">
-        <table className="table">
-          <thead>
-            <tr>
-              <th>Jméno</th>
-              <th>Uživatel</th>
-              <th>Heslo</th>
-              <th>Role</th>
-              <th>SPZ</th>
-              <th>Priorita</th>
-            </tr>
-          </thead>
-          <tbody>
-            {users.map((u) => (
-              <tr key={u.id}>
-                <td><input className="input" value={u.name || ""} onChange={(e) => handleLocalChange(u.id, "name", e.target.value)} onBlur={() => handlePersist(u, "name")} /></td>
-                <td>{u.username}</td>
-                <td><input className="input" value={u.password} onChange={(e) => handleLocalChange(u.id, "password", e.target.value)} onBlur={() => handlePersist(u, "password")} /></td>
-                <td>
-                  <select className="input" value={u.role} onChange={(e) => handleLocalChange(u.id, "role", e.target.value as Role)} onBlur={() => handlePersist(u, "role")}>
-                    <option value="admin">admin</option>
-                    <option value="user">user</option>
-                  </select>
-                </td>
-                <td><input className="input" value={u.spz || ""} onChange={(e) => handleLocalChange(u.id, "spz", e.target.value)} onBlur={() => handlePersist(u, "spz")} /></td>
-                <td style={{ textAlign: "center" }}>
-                  <input type="checkbox" checked={u.priority || false} onChange={(e) => handleLocalChange(u.id, "priority", e.target.checked)} onBlur={() => handlePersist(u, "priority")} />
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-}
-
 export default function App() {
   const [users, setUsers] = useState<User[]>([]);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -182,30 +128,33 @@ export default function App() {
 
   const handleLogin = (username: string, password: string) => {
     const found = users.find((u) => u.username === username && u.password === password);
-    if (found) { setCurrentUser(found); setView("reservations"); setLoginError(null); }
-    else setLoginError("Neplatné jméno nebo heslo");
+    if (found) {
+      setCurrentUser(found);
+      setView("reservations");
+      setLoginError(null);
+    } else {
+      setLoginError("Neplatné jméno nebo heslo");
+    }
   };
 
   const handleReserve = async (place: number, day: string, time: string, date: Date) => {
     if (!currentUser) return;
 
-    // 🔸 Kontrola max. 2 pracovních dnů dopředu pro neprioritní uživatele
     const workingDiff = getWorkingDaysDiff(new Date(), date);
-    if (!currentUser.priority && workingDiff > 2) {
-      alert("Neprioritní uživatel může rezervovat maximálně 2 pracovní dny dopředu.");
+    if (!currentUser.priority && workingDiff > 3) {
+      alert("Neprioritní uživatel může rezervovat maximálně 3 pracovní dny dopředu.");
       return;
     }
 
-    const key = `${day} ${time} ${weekOffset}`;
-    const exists = reservations.find((r) => r.place === place && r.time === key);
+    const isoDate = date.toISOString().split("T")[0];
+    const exists = reservations.find(r => r.place === place && r.date === isoDate && r.time_slot === time);
     if (exists) return;
 
     const { data, error } = await supabase.from("reservations").insert([{
       place,
-      time: key,
-      userId: currentUser.id,
-      date: date.toISOString().split("T")[0],
-      time_slot: time
+      date: isoDate,
+      time_slot: time,
+      userId: currentUser.id
     }]).select();
 
     if (error) {
@@ -230,39 +179,15 @@ export default function App() {
 
   if (view === "login") return <LoginView onLogin={handleLogin} error={loginError} users={users} />;
 
-  if (view === "userAdmin") {
-    if (currentUser?.role !== "admin") {
-      return (
-        <div className="container">
-          <div className="card"><p>Přístup zamítnut</p><button className="btn" onClick={() => setView("reservations")}>Zpět</button></div>
-        </div>
-      );
-    }
-    return (
-      <div>
-        <div className="container">
-          <div className="header">
-            <h2>Vítej, {currentUser?.name}</h2>
-            <div>
-              <button className="btn" style={{ marginRight: 8 }} onClick={() => setView("reservations")}>Zpět na rezervace</button>
-              <button className="btn" onClick={() => { setCurrentUser(null); setView("login"); }}>Odhlásit</button>
-            </div>
-          </div>
-        </div>
-        <UserAdmin users={users} setUsers={setUsers} />
-      </div>
-    );
-  }
-
   return (
     <div className="container">
       <div className="header">
         <h2>Vítej, {currentUser?.name}</h2>
         <div>
-          {currentUser?.role === "admin" && <button className="btn" style={{ marginRight: 8 }} onClick={() => setView("userAdmin")}>Správa uživatelů</button>}
           <button className="btn" onClick={() => { setCurrentUser(null); setView("login"); }}>Odhlásit</button>
         </div>
       </div>
+
       <div className="card">
         <h3>Rezervace parkovacích míst</h3>
         <div className="weekbar">
@@ -270,36 +195,66 @@ export default function App() {
           <strong>{getWeekRangeLabel(weekOffset)}</strong>
           <button className="btn" onClick={() => setWeekOffset(weekOffset + 1)}>Následující týden ▶️</button>
         </div>
+
         <div className="grid" style={{ gridTemplateColumns: `repeat(${days.length}, 1fr)` }}>
-          {days.map((day, i) => (
-            <div key={day} className="card" style={{ padding: 10 }}>
-              <h4 style={{ textAlign: "center" }}>{day} {weekDates[i].toLocaleDateString("cs-CZ")}</h4>
-              {times.map((time) => (
-                <div key={time} className="slot">
-                  <strong>{time}</strong>
-                  {places.map((place) => {
-                    const reservation = reservations.find((r) => r.place === place && r.time === `${day} ${time} ${weekOffset}`);
-                    const owner = reservation ? users.find(u => u.id === reservation.userId) : null;
-                    const isPriority = owner?.priority;
-                    return (
-                      <div key={place} className="slot" style={{ background: reservation ? (isPriority ? "#fde68a" : "#fef9c3") : "#fff" }}>
-                        {reservation ? (
-                          <>
-                            <span>{owner?.name} ({owner?.spz}) {isPriority && <span className="badge">prioritní</span>}</span>
-                            {(currentUser?.role === "admin" || reservation.userId === currentUser?.id) && (
-                              <button className="btn btn-danger" style={{ marginLeft: 8 }} onClick={() => handleCancel(reservation.id)}>Zrušit</button>
-                            )}
-                          </>
-                        ) : (
-                          <button className="btn btn-success" onClick={() => handleReserve(place, day, time, weekDates[i])}>Rezervovat</button>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              ))}
-            </div>
-          ))}
+          {days.map((day, i) => {
+            const dateIso = weekDates[i].toISOString().split("T")[0];
+            return (
+              <div key={day} className="card" style={{ padding: 10 }}>
+                <h4 style={{ textAlign: "center" }}>{day} {weekDates[i].toLocaleDateString("cs-CZ")}</h4>
+                {times.map((time) => (
+                  <div key={time} className="slot">
+                    <strong>{time}</strong>
+                    {places.map((place) => {
+                      const reservation = reservations.find(r => r.place === place && r.date === dateIso && r.time_slot === time);
+                      const owner = reservation ? users.find(u => u.id === reservation.userId) : null;
+                      const isPriority = owner?.priority;
+
+                      return (
+                        <div
+                          key={place}
+                          className="slot"
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "space-between",
+                            background: reservation ? (isPriority ? "#fde68a" : "#fef9c3") : "#fff",
+                            padding: "4px 6px"
+                          }}
+                        >
+                          <span style={{ fontWeight: "bold", marginRight: 4 }}>{place}</span>
+
+                          {reservation ? (
+                            <span style={{ flex: 1 }}>
+                              {owner?.name} ({owner?.spz}) {isPriority && <span className="badge">prioritní</span>}
+                            </span>
+                          ) : (
+                            <button
+                              className="btn btn-success"
+                              style={{ flex: 1 }}
+                              onClick={() => handleReserve(place, day, time, weekDates[i])}
+                            >
+                              Rezervovat
+                            </button>
+                          )}
+
+                          {reservation && (currentUser?.role === "admin" || reservation.userId === currentUser?.id) && (
+                            <button
+                              className="btn btn-danger"
+                              style={{ marginLeft: 4 }}
+                              onClick={() => handleCancel(reservation.id)}
+                            >
+                              ✕
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                ))}
+              </div>
+            );
+          })}
         </div>
       </div>
     </div>
