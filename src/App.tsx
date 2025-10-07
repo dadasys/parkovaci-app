@@ -1,4 +1,3 @@
-
 import React, { useEffect, useMemo, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
 
@@ -284,15 +283,32 @@ export default function App() {
                     const isPriority = owner?.priority;
                     return (
                       <div key={place} className="slot" style={{ background: reservation ? (isPriority ? "#fde68a" : "#fef9c3") : "#fff" }}>
-                        {reservation ? (
+                        {!reservation ? (
                           <>
-                            <span>{owner?.name} ({owner?.spz}) {isPriority && <span className="badge">prioritní</span>}</span>
-                            {(currentUser?.role === "admin" || reservation.userId === currentUser?.id) && (
-                              <button className="btn btn-danger" style={{ marginLeft: 8 }} onClick={() => handleCancel(reservation.id)}>Zrušit</button>
-                            )}
+                            <span style={{ marginRight: 6 }}>{place}</span>
+                            <button
+                              className="btn btn-success"
+                              onClick={() => handleReserve(place, day, time, weekDates[i])}
+                            >
+                              Rezervovat
+                            </button>
                           </>
                         ) : (
-                          <button className="btn btn-success" onClick={() => handleReserve(place, day, time, weekDates[i])}>Rezervovat</button>
+                          <>
+                            <span>
+                              {owner?.name} ({owner?.spz}){" "}
+                              {isPriority && <span className="badge">prioritní</span>}
+                            </span>
+                            {(currentUser?.role === "admin" || reservation.userId === currentUser?.id) && (
+                              <button
+                                className="btn btn-danger"
+                                style={{ marginLeft: 8 }}
+                                onClick={() => handleCancel(reservation.id)}
+                              >
+                                Zrušit
+                              </button>
+                            )}
+                          </>
                         )}
                       </div>
                     );
