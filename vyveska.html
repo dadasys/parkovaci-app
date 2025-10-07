@@ -30,7 +30,6 @@
     }
     .weekbar strong{ color:#111827; }
 
-    /* Celá tabule je horizontálně scrollovatelná, když se nevejde */
     .board-wrapper {
       overflow-x: auto;
       padding-bottom: 10px;
@@ -38,7 +37,7 @@
 
     .board{
       display:grid;
-      grid-template-columns: repeat(5, 190px);  /* lehce zúžené */
+      grid-template-columns: repeat(5, 190px);
       gap:12px;
       width:max-content;
       margin:0 auto 24px;
@@ -64,9 +63,9 @@
     }
     .place .num{ font-weight:700; margin-right:6px; }
 
-    .volno{ background:#bbf7d0; }     /* zelené volno */
-    .prio{ background:#fde047; }     /* tmavší žlutá – prioritní */
-    .npr  { background:#fef9c3; }    /* světlejší žlutá – neprioritní */
+    .volno{ background:#bbf7d0; }
+    .prio{ background:#fde047; }
+    .npr  { background:#fef9c3; }
   </style>
 </head>
 <body>
@@ -101,13 +100,21 @@
 
     let weekOffset = 0;
 
-    function getWeekDates(ofs=0){
-      const d = new Date();
-      const day = d.getDay();
-      const diff = d.getDate() - day + (day===0?-6:1) + ofs*7; // pondělí
-      const mon = new Date(d.setDate(diff));
-      return Array.from({length:5}, (_,i)=>{ const x=new Date(mon); x.setDate(mon.getDate()+i); return x; });
+    // ✅ Finální robustní verze výpočtu pondělí
+    function getWeekDates(ofs = 0) {
+      const today = new Date();
+      const day = (today.getDay() + 6) % 7;  // pondělí = 0, úterý = 1 ...
+      const monday = new Date(today);
+      monday.setDate(today.getDate() - day + ofs * 7);
+      monday.setHours(0, 0, 0, 0);
+
+      return Array.from({ length: 5 }, (_, i) => {
+        const d = new Date(monday);
+        d.setDate(monday.getDate() + i);
+        return d;
+      });
     }
+
     function fmtDateISO(dt){ return dt.toISOString().split("T")[0]; }
     function setWeekLabel(){
       const w = getWeekDates(weekOffset);
