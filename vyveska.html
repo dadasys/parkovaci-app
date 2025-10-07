@@ -101,13 +101,22 @@
 
     let weekOffset = 0;
 
-    function getWeekDates(ofs=0){
-      const d = new Date();
-      const day = d.getDay();
-      const diff = d.getDate() - day + (day===0?-6:1) + ofs*7; // pondělí
-      const mon = new Date(d.setDate(diff));
-      return Array.from({length:5}, (_,i)=>{ const x=new Date(mon); x.setDate(mon.getDate()+i); return x; });
+    // ✅ Opravená funkce (bez mutace původního data)
+    function getWeekDates(ofs = 0) {
+      const today = new Date();
+      const base = new Date(today);
+      const day = base.getDay();
+      const diff = base.getDate() - day + (day === 0 ? -6 : 1) + ofs * 7;
+      const monday = new Date(base);
+      monday.setDate(diff);
+
+      return Array.from({ length: 5 }, (_, i) => {
+        const x = new Date(monday);
+        x.setDate(monday.getDate() + i);
+        return x;
+      });
     }
+
     function fmtDateISO(dt){ return dt.toISOString().split("T")[0]; }
     function setWeekLabel(){
       const w = getWeekDates(weekOffset);
