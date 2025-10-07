@@ -6,21 +6,6 @@
   <title>Přehled rezervací</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
-    :root{ --scale:1; }
-    /* škálování celé tabule, aby se na výšku vešla beze změny layoutu */
-    .scale-wrap{
-      transform: scale(var(--scale));
-      transform-origin: top center;
-      /* šířku „vrátíme“ zpět, aby se po scale vešlo na viewport */
-      width: calc(100% / var(--scale));
-    }
-    /* breakpoints – jen měníme scale, layout zůstává stejný */
-    @media (max-width: 1024px){ :root{ --scale: .9; } }
-    @media (max-width: 900px) { :root{ --scale: .85; } }
-    @media (max-width: 768px) { :root{ --scale: .8; } }
-    @media (max-width: 640px) { :root{ --scale: .72; } }
-    @media (max-width: 480px) { :root{ --scale: .65; } }
-
     body{
       font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
       background:#f3f4f6; margin:0;
@@ -45,19 +30,27 @@
     }
     .weekbar strong{ color:#111827; }
 
-    /* DESKTOP layout – přesně 5 sloupců jako teď */
+    /* Celá tabule je horizontálně scrollovatelná, když se nevejde */
+    .board-wrapper {
+      overflow-x: auto;
+      padding-bottom: 10px;
+    }
+
     .board{
-      margin:0 auto; padding:0 12px 24px;
-      display:grid; grid-template-columns: repeat(5, 220px);
-      gap:14px; width:max-content;
+      display:grid;
+      grid-template-columns: repeat(5, 190px);  /* lehce zúžené */
+      gap:12px;
+      width:max-content;
+      margin:0 auto 24px;
+      padding:0 12px;
     }
 
     .day{
       background:#fff; border-radius:12px; box-shadow:0 2px 6px rgba(0,0,0,.08);
-      padding:10px; width:220px;
+      padding:8px; width:190px;
     }
     .day h3{
-      margin:0 0 8px; text-align:center; color:#1e3a8a; font-size:16px; line-height:1.2;
+      margin:0 0 8px; text-align:center; color:#1e3a8a; font-size:15px; line-height:1.2;
     }
     .slot{ margin-top:8px; }
     .slot .cap{
@@ -65,15 +58,15 @@
     }
 
     .place{
-      border:1px solid #e5e7eb; border-radius:8px; padding:6px 8px; margin:6px 0;
-      display:flex; align-items:center; justify-content:center; height:36px;
-      background:#fff; font-size:13px;
+      border:1px solid #e5e7eb; border-radius:8px; padding:5px 6px; margin:5px 0;
+      display:flex; align-items:center; justify-content:center; height:34px;
+      background:#fff; font-size:12.5px;
     }
     .place .num{ font-weight:700; margin-right:6px; }
 
-    .volno{ background:#bbf7d0; }          /* zelené volno */
-    .prio{ background:#fde047; }           /* tmavší žlutá – prioritní */
-    .npr  { background:#fef9c3; }          /* světlejší žlutá – neprioritní */
+    .volno{ background:#bbf7d0; }     /* zelené volno */
+    .prio{ background:#fde047; }     /* tmavší žlutá – prioritní */
+    .npr  { background:#fef9c3; }    /* světlejší žlutá – neprioritní */
   </style>
 </head>
 <body>
@@ -86,13 +79,13 @@
     </div>
   </header>
 
-  <div class="scale-wrap">
-    <div class="weekbar">
-      <button id="prevWeek">◀️ Předchozí týden</button>
-      <strong id="weekRange"></strong>
-      <button id="nextWeek">Následující týden ▶️</button>
-    </div>
+  <div class="weekbar">
+    <button id="prevWeek">◀️ Předchozí týden</button>
+    <strong id="weekRange"></strong>
+    <button id="nextWeek">Následující týden ▶️</button>
+  </div>
 
+  <div class="board-wrapper">
     <div class="board" id="board">Načítám…</div>
   </div>
 
