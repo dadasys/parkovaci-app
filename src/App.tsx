@@ -29,14 +29,18 @@ const times = ["7-13", "13-00"] as const;
 const days = ["Pondělí", "Úterý", "Středa", "Čtvrtek", "Pátek"] as const;
 const places = [1, 2, 3, 4, 5, 6];
 
+// 🟡 Opravený výpočet týdne – všechny dny mají čas 12:00, žádné UTC posuny
 function getWeekDates(weekOffset: number) {
-  const start = new Date();
-  const day = start.getDay();
-  const diff = start.getDate() - day + (day === 0 ? -6 : 1) + weekOffset * 7;
-  const monday = new Date(start.setDate(diff));
+  const today = new Date();
+  const day = today.getDay();
+  const diff = today.getDate() - day + (day === 0 ? -6 : 1) + weekOffset * 7;
+  const monday = new Date(today.setDate(diff));
+  monday.setHours(12, 0, 0, 0); // fix poledne
+
   return Array.from({ length: 5 }, (_, i) => {
     const d = new Date(monday);
     d.setDate(monday.getDate() + i);
+    d.setHours(12, 0, 0, 0); // fix poledne pro každý den
     return d;
   });
 }
@@ -48,7 +52,7 @@ function getWeekRangeLabel(weekOffset: number) {
   return `${monday.toLocaleDateString("cs-CZ")} - ${friday.toLocaleDateString("cs-CZ")}`;
 }
 
-// ✅ Pomocná funkce: čistý kalendářní den (žádný UTC posun)
+// 🟡 Formátování na YYYY-MM-DD bez UTC posunu
 function formatLocalISO(date: Date) {
   const y = date.getFullYear();
   const m = String(date.getMonth() + 1).padStart(2, '0');
@@ -56,6 +60,7 @@ function formatLocalISO(date: Date) {
   return `${y}-${m}-${d}`;
 }
 
+// Pomocná funkce: rozdíl v pracovních dnech mezi dvěma daty
 function getWorkingDaysDiff(from: Date, to: Date): number {
   let count = 0;
   const d = new Date(from);
@@ -206,7 +211,6 @@ export default function App() {
     const exists = reservations.find((r) => r.place === place && r.time === key);
     if (exists) return;
 
-    // ✅ Pouze čistý kalendářní den, žádné manipulace s časem
     const { data, error } = await supabase.from("reservations").insert([{
       place,
       time: key,
