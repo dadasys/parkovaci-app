@@ -48,6 +48,14 @@ function getWeekRangeLabel(weekOffset: number) {
   return `${monday.toLocaleDateString("cs-CZ")} - ${friday.toLocaleDateString("cs-CZ")}`;
 }
 
+// 🟡 Pomocná funkce: lokální datum ve formátu YYYY-MM-DD (žádný UTC posun)
+function formatLocalISO(date: Date) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
 // Pomocná funkce: rozdíl v pracovních dnech mezi dvěma daty
 function getWorkingDaysDiff(from: Date, to: Date): number {
   let count = 0;
@@ -59,7 +67,7 @@ function getWorkingDaysDiff(from: Date, to: Date): number {
   while (d < target) {
     d.setDate(d.getDate() + 1);
     const day = d.getDay();
-    if (day !== 0 && day !== 6) { // vynechat víkendy
+    if (day !== 0 && day !== 6) {
       count++;
     }
   }
@@ -189,7 +197,6 @@ export default function App() {
   const handleReserve = async (place: number, day: string, time: string, date: Date) => {
     if (!currentUser) return;
 
-    // 🔸 Kontrola max. 2 pracovních dnů dopředu pro neprioritní uživatele
     const workingDiff = getWorkingDaysDiff(new Date(), date);
     if (!currentUser.priority && workingDiff > 2) {
       alert("Neprioritní uživatel může rezervovat maximálně 2 pracovní dny dopředu.");
@@ -200,11 +207,12 @@ export default function App() {
     const exists = reservations.find((r) => r.place === place && r.time === key);
     if (exists) return;
 
+    // 🟡 Ukládáme lokální ISO datum, žádný UTC posun
     const { data, error } = await supabase.from("reservations").insert([{
       place,
       time: key,
       userId: currentUser.id,
-      date: date.toISOString().split("T")[0],
+      date: formatLocalISO(date),
       time_slot: time
     }]).select();
 
