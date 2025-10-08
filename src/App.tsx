@@ -29,18 +29,16 @@ const times = ["7-13", "13-00"] as const;
 const days = ["Pondělí", "Úterý", "Středa", "Čtvrtek", "Pátek"] as const;
 const places = [1, 2, 3, 4, 5, 6];
 
-// 🟡 Opravený výpočet týdne – všechny dny mají čas 12:00, žádné UTC posuny
 function getWeekDates(weekOffset: number) {
-  const today = new Date();
-  const day = today.getDay();
-  const diff = today.getDate() - day + (day === 0 ? -6 : 1) + weekOffset * 7;
-  const monday = new Date(today.setDate(diff));
-  monday.setHours(12, 0, 0, 0); // fix poledne
-
+  const start = new Date();
+  const day = start.getDay();
+  const diff = start.getDate() - day + (day === 0 ? -6 : 1) + weekOffset * 7;
+  const monday = new Date(start.setDate(diff));
+  monday.setHours(12, 0, 0, 0); // ✅ důležité — fix přechodu času
   return Array.from({ length: 5 }, (_, i) => {
     const d = new Date(monday);
     d.setDate(monday.getDate() + i);
-    d.setHours(12, 0, 0, 0); // fix poledne pro každý den
+    d.setHours(12, 0, 0, 0);
     return d;
   });
 }
@@ -52,12 +50,14 @@ function getWeekRangeLabel(weekOffset: number) {
   return `${monday.toLocaleDateString("cs-CZ")} - ${friday.toLocaleDateString("cs-CZ")}`;
 }
 
-// 🟡 Formátování na YYYY-MM-DD bez UTC posunu
+// ✅ Bezpečné lokální datum bez UTC posunu — vždy nastaví čas na poledne
 function formatLocalISO(date: Date) {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, '0');
-  const d = String(date.getDate()).padStart(2, '0');
-  return `${y}-${m}-${d}`;
+  const d = new Date(date);
+  d.setHours(12, 0, 0, 0);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
 }
 
 // Pomocná funkce: rozdíl v pracovních dnech mezi dvěma daty
@@ -215,7 +215,7 @@ export default function App() {
       place,
       time: key,
       userId: currentUser.id,
-      date: formatLocalISO(date),
+      date: formatLocalISO(date),   // ✅ zde je fix — ukládáme polední lokální datum
       time_slot: time
     }]).select();
 
