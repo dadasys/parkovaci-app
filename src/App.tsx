@@ -29,12 +29,14 @@ const times = ["7-13", "13-00"] as const;
 const days = ["Pondělí", "Úterý", "Středa", "Čtvrtek", "Pátek"] as const;
 const places = [1, 2, 3, 4, 5, 6];
 
+// ✅ Výpočet týdne s nastavením hodin na poledne (žádné posuny)
 function getWeekDates(weekOffset: number) {
-  const start = new Date();
-  const day = start.getDay();
-  const diff = start.getDate() - day + (day === 0 ? -6 : 1) + weekOffset * 7;
-  const monday = new Date(start.setDate(diff));
-  monday.setHours(12, 0, 0, 0); // ✅ důležité — fix přechodu času
+  const today = new Date();
+  const day = today.getDay();
+  const diff = today.getDate() - day + (day === 0 ? -6 : 1) + weekOffset * 7;
+  const monday = new Date(today.setDate(diff));
+  monday.setHours(12, 0, 0, 0);
+
   return Array.from({ length: 5 }, (_, i) => {
     const d = new Date(monday);
     d.setDate(monday.getDate() + i);
@@ -50,17 +52,16 @@ function getWeekRangeLabel(weekOffset: number) {
   return `${monday.toLocaleDateString("cs-CZ")} - ${friday.toLocaleDateString("cs-CZ")}`;
 }
 
-// ✅ Bezpečné lokální datum bez UTC posunu — vždy nastaví čas na poledne
+// ✅ OPRAVENO: Datum vždy nastaveno na poledne → žádný posun o den zpět
 function formatLocalISO(date: Date) {
   const d = new Date(date);
-  d.setHours(12, 0, 0, 0);
+  d.setHours(12, 0, 0, 0); // fix poledne
   const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
   return `${y}-${m}-${day}`;
 }
 
-// Pomocná funkce: rozdíl v pracovních dnech mezi dvěma daty
 function getWorkingDaysDiff(from: Date, to: Date): number {
   let count = 0;
   const d = new Date(from);
@@ -215,7 +216,7 @@ export default function App() {
       place,
       time: key,
       userId: currentUser.id,
-      date: formatLocalISO(date),   // ✅ zde je fix — ukládáme polední lokální datum
+      date: formatLocalISO(date), // ✅ zde se použije nová funkce
       time_slot: time
     }]).select();
 
