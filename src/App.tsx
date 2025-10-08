@@ -29,12 +29,13 @@ const times = ["7-13", "13-00"] as const;
 const days = ["Pondělí", "Úterý", "Středa", "Čtvrtek", "Pátek"] as const;
 const places = [1, 2, 3, 4, 5, 6];
 
+// 🟡 Výpočet pracovního týdne — nastavíme vždy poledne, aby UTC nemělo vliv
 function getWeekDates(weekOffset: number) {
   const today = new Date();
   const day = today.getDay();
   const diff = today.getDate() - day + (day === 0 ? -6 : 1) + weekOffset * 7;
   const monday = new Date(today.setDate(diff));
-  monday.setHours(12, 0, 0, 0); // fix poledne
+  monday.setHours(12, 0, 0, 0);
 
   return Array.from({ length: 5 }, (_, i) => {
     const d = new Date(monday);
@@ -51,6 +52,15 @@ function getWeekRangeLabel(weekOffset: number) {
   return `${monday.toLocaleDateString("cs-CZ")} - ${friday.toLocaleDateString("cs-CZ")}`;
 }
 
+// 🟡 Formátování na YYYY-MM-DD bez časového pásma
+function formatLocalISO(date: Date) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+// Pomocná funkce: rozdíl v pracovních dnech mezi dvěma daty
 function getWorkingDaysDiff(from: Date, to: Date): number {
   let count = 0;
   const d = new Date(from);
@@ -113,61 +123,11 @@ function LoginView({ onLogin, error, users }: { onLogin: (u: string, p: string) 
   );
 }
 
-function UserAdmin({ users, setUsers }: { users: User[]; setUsers: (u: User[]) => void }) {
-  const handleLocalChange = (id: number, field: keyof User, value: any) => {
-    setUsers(users.map((u) => (u.id === id ? { ...u, [field]: value } : u)));
-  };
-  const handlePersist = async (user: User, field: keyof User) => {
-    const { error } = await supabase.from("users").update({ [field]: (user as any)[field] }).eq("id", user.id);
-    if (error) alert("Chyba ukládání: " + error.message);
-  };
-  return (
-    <div className="container">
-      <div className="header">
-        <h2>Správa uživatelů</h2>
-      </div>
-      <div className="card">
-        <table className="table">
-          <thead>
-            <tr>
-              <th>Jméno</th>
-              <th>Uživatel</th>
-              <th>Heslo</th>
-              <th>Role</th>
-              <th>SPZ</th>
-              <th>Priorita</th>
-            </tr>
-          </thead>
-          <tbody>
-            {users.map((u) => (
-              <tr key={u.id}>
-                <td><input className="input" value={u.name || ""} onChange={(e) => handleLocalChange(u.id, "name", e.target.value)} onBlur={() => handlePersist(u, "name")} /></td>
-                <td>{u.username}</td>
-                <td><input className="input" value={u.password} onChange={(e) => handleLocalChange(u.id, "password", e.target.value)} onBlur={() => handlePersist(u, "password")} /></td>
-                <td>
-                  <select className="input" value={u.role} onChange={(e) => handleLocalChange(u.id, "role", e.target.value as Role)} onBlur={() => handlePersist(u, "role")}>
-                    <option value="admin">admin</option>
-                    <option value="user">user</option>
-                  </select>
-                </td>
-                <td><input className="input" value={u.spz || ""} onChange={(e) => handleLocalChange(u.id, "spz", e.target.value)} onBlur={() => handlePersist(u, "spz")} /></td>
-                <td style={{ textAlign: "center" }}>
-                  <input type="checkbox" checked={u.priority || false} onChange={(e) => handleLocalChange(u.id, "priority", e.target.checked)} onBlur={() => handlePersist(u, "priority")} />
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-}
-
 export default function App() {
   const [users, setUsers] = useState<User[]>([]);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [reservations, setReservations] = useState<Reservation[]>([]);
-  const [view, setView] = useState<"login" | "reservations" | "userAdmin">("login");
+  const [view, setView] = useState<"login" | "reservations">("login");
   const [loginError, setLoginError] = useState<string | null>(null);
   const [weekOffset, setWeekOffset] = useState(0);
 
@@ -184,12 +144,23 @@ export default function App() {
 
   const handleLogin = (username: string, password: string) => {
     const found = users.find((u) => u.username === username && u.password === password);
-    if (found) { setCurrentUser(found); setView("reservations"); setLoginError(null); }
-    else setLoginError("Neplatné jméno nebo heslo");
+    if (found) {
+      setCurrentUser(found);
+      setView("reservations");
+      setLoginError(null);
+    } else setLoginError("Neplatné jméno nebo heslo");
   };
 
   const handleReserve = async (place: number, day: string, time: string, date: Date) => {
     if (!currentUser) return;
+
+    // 🟡 DEBUG výpis — tady uvidíme, co se ukládá
+    console.log("📅 DEBUG — Rezervace kliknuta:");
+    console.log("📅 Původní objekt Date:", date);
+    console.log("📅 toString():", date.toString());
+    console.log("📅 toISOString():", date.toISOString());
+    console.log("📅 Lokální R/M/D:", date.getFullYear(), date.getMonth() + 1, date.getDate());
+    console.log("📅 Ukládáme jako:", formatLocalISO(date));
 
     const workingDiff = getWorkingDaysDiff(new Date(), date);
     if (!currentUser.priority && workingDiff > 2) {
@@ -201,15 +172,11 @@ export default function App() {
     const exists = reservations.find((r) => r.place === place && r.time === key);
     if (exists) return;
 
-    // ✅ žádné časové pásmo – čistý řetězec YYYY-MM-DD
-    const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
-    console.log("Ukládám do Supabase:", date, "→", dateStr);
-
-    const { data, error } = await supabase.from("reservations").insert([{
+    const { data: newData, error } = await supabase.from("reservations").insert([{
       place,
       time: key,
       userId: currentUser.id,
-      date: dateStr,
+      date: formatLocalISO(date),
       time_slot: time
     }]).select();
 
@@ -217,54 +184,16 @@ export default function App() {
       alert(error.message);
       return;
     }
-    if (data) setReservations([...reservations, ...(data as Reservation[])]);
-  };
-
-  const handleCancel = async (id: number) => {
-    if (!currentUser) return;
-    const reservation = reservations.find((r) => r.id === id);
-    if (!reservation) return;
-    if (reservation.userId !== currentUser.id && currentUser.role !== "admin") return;
-    const { error } = await supabase.from("reservations").delete().eq("id", id);
-    if (error) {
-      alert(error.message);
-      return;
-    }
-    setReservations(reservations.filter((r) => r.id !== id));
+    if (newData) setReservations([...reservations, ...(newData as Reservation[])]);
   };
 
   if (view === "login") return <LoginView onLogin={handleLogin} error={loginError} users={users} />;
-
-  if (view === "userAdmin") {
-    if (currentUser?.role !== "admin") {
-      return (
-        <div className="container">
-          <div className="card"><p>Přístup zamítnut</p><button className="btn" onClick={() => setView("reservations")}>Zpět</button></div>
-        </div>
-      );
-    }
-    return (
-      <div>
-        <div className="container">
-          <div className="header">
-            <h2>Vítej, {currentUser?.name}</h2>
-            <div>
-              <button className="btn" style={{ marginRight: 8 }} onClick={() => setView("reservations")}>Zpět na rezervace</button>
-              <button className="btn" onClick={() => { setCurrentUser(null); setView("login"); }}>Odhlásit</button>
-            </div>
-          </div>
-        </div>
-        <UserAdmin users={users} setUsers={setUsers} />
-      </div>
-    );
-  }
 
   return (
     <div className="container">
       <div className="header">
         <h2>Vítej, {currentUser?.name}</h2>
         <div>
-          {currentUser?.role === "admin" && <button className="btn" style={{ marginRight: 8 }} onClick={() => setView("userAdmin")}>Správa uživatelů</button>}
           <button className="btn" onClick={() => { setCurrentUser(null); setView("login"); }}>Odhlásit</button>
         </div>
       </div>
@@ -304,15 +233,6 @@ export default function App() {
                               {owner?.name} ({owner?.spz}){" "}
                               {isPriority && <span className="badge">prioritní</span>}
                             </span>
-                            {(currentUser?.role === "admin" || reservation.userId === currentUser?.id) && (
-                              <button
-                                className="btn btn-danger"
-                                style={{ marginLeft: 8 }}
-                                onClick={() => handleCancel(reservation.id)}
-                              >
-                                Zrušit
-                              </button>
-                            )}
                           </>
                         )}
                       </div>
