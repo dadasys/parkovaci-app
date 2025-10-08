@@ -29,18 +29,18 @@ const times = ["7-13", "13-00"] as const;
 const days = ["Pondělí", "Úterý", "Středa", "Čtvrtek", "Pátek"] as const;
 const places = [1, 2, 3, 4, 5, 6];
 
-// ✅ Výpočet týdne s nastavením hodin na poledne (žádné posuny)
+// 🟡 Výpočet pracovního týdne
 function getWeekDates(weekOffset: number) {
   const today = new Date();
   const day = today.getDay();
   const diff = today.getDate() - day + (day === 0 ? -6 : 1) + weekOffset * 7;
   const monday = new Date(today.setDate(diff));
-  monday.setHours(12, 0, 0, 0);
+  monday.setHours(0, 0, 0, 0);
 
   return Array.from({ length: 5 }, (_, i) => {
     const d = new Date(monday);
     d.setDate(monday.getDate() + i);
-    d.setHours(12, 0, 0, 0);
+    d.setHours(0, 0, 0, 0);
     return d;
   });
 }
@@ -52,16 +52,15 @@ function getWeekRangeLabel(weekOffset: number) {
   return `${monday.toLocaleDateString("cs-CZ")} - ${friday.toLocaleDateString("cs-CZ")}`;
 }
 
-// ✅ OPRAVENO: Datum vždy nastaveno na poledne → žádný posun o den zpět
-function formatLocalISO(date: Date) {
-  const d = new Date(date);
-  d.setHours(12, 0, 0, 0); // fix poledne
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
+// 🟢 Jednoduchý převod Date → YYYY-MM-DD bez časové složky
+function formatLocalISO(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
 }
 
+// Pracovní dny mezi dvěma daty
 function getWorkingDaysDiff(from: Date, to: Date): number {
   let count = 0;
   const d = new Date(from);
@@ -212,11 +211,12 @@ export default function App() {
     const exists = reservations.find((r) => r.place === place && r.time === key);
     if (exists) return;
 
+    // 🟢 Ukládáme pouze čistý datum string
     const { data, error } = await supabase.from("reservations").insert([{
       place,
       time: key,
       userId: currentUser.id,
-      date: formatLocalISO(date), // ✅ zde se použije nová funkce
+      date: formatLocalISO(date),
       time_slot: time
     }]).select();
 
