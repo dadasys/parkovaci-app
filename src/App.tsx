@@ -48,11 +48,11 @@ function getWeekRangeLabel(weekOffset: number) {
   return `${monday.toLocaleDateString("cs-CZ")} - ${friday.toLocaleDateString("cs-CZ")}`;
 }
 
-// 🟡 Lokální formát YYYY-MM-DD, žádný UTC posun
+// ✅ Pomocná funkce: čistý kalendářní den (žádný UTC posun)
 function formatLocalISO(date: Date) {
   const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, "0");
-  const d = String(date.getDate()).padStart(2, "0");
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
   return `${y}-${m}-${d}`;
 }
 
@@ -62,6 +62,7 @@ function getWorkingDaysDiff(from: Date, to: Date): number {
   d.setHours(0, 0, 0, 0);
   const target = new Date(to);
   target.setHours(0, 0, 0, 0);
+
   while (d < target) {
     d.setDate(d.getDate() + 1);
     const day = d.getDay();
@@ -82,7 +83,7 @@ function LoginView({ onLogin, error, users }: { onLogin: (u: string, p: string) 
   };
 
   useEffect(() => {
-    if (users.length && !users.find((u) => u.username === username)) {
+    if (users.length && !users.find(u => u.username === username)) {
       setUsername(users[0].username);
     }
   }, [users]);
@@ -192,7 +193,6 @@ export default function App() {
     else setLoginError("Neplatné jméno nebo heslo");
   };
 
-  // 🟢 OPRAVENÁ verze ukládání rezervace
   const handleReserve = async (place: number, day: string, time: string, date: Date) => {
     if (!currentUser) return;
 
@@ -206,15 +206,12 @@ export default function App() {
     const exists = reservations.find((r) => r.place === place && r.time === key);
     if (exists) return;
 
-    // 🟡 Neutralizace časového pásma — klíčová změna
-    const localDate = new Date(date);
-    localDate.setHours(12, 0, 0, 0);
-
+    // ✅ Pouze čistý kalendářní den, žádné manipulace s časem
     const { data, error } = await supabase.from("reservations").insert([{
       place,
       time: key,
       userId: currentUser.id,
-      date: formatLocalISO(localDate),
+      date: formatLocalISO(date),
       time_slot: time
     }]).select();
 
@@ -289,14 +286,17 @@ export default function App() {
                   <strong>{time}</strong>
                   {places.map((place) => {
                     const reservation = reservations.find((r) => r.place === place && r.time === `${day} ${time} ${weekOffset}`);
-                    const owner = reservation ? users.find((u) => u.id === reservation.userId) : null;
+                    const owner = reservation ? users.find(u => u.id === reservation.userId) : null;
                     const isPriority = owner?.priority;
                     return (
                       <div key={place} className="slot" style={{ background: reservation ? (isPriority ? "#fde68a" : "#fef9c3") : "#fff" }}>
                         {!reservation ? (
                           <>
                             <span style={{ marginRight: 6 }}>{place}</span>
-                            <button className="btn btn-success" onClick={() => handleReserve(place, day, time, weekDates[i])}>
+                            <button
+                              className="btn btn-success"
+                              onClick={() => handleReserve(place, day, time, weekDates[i])}
+                            >
                               Rezervovat
                             </button>
                           </>
@@ -307,7 +307,11 @@ export default function App() {
                               {isPriority && <span className="badge">prioritní</span>}
                             </span>
                             {(currentUser?.role === "admin" || reservation.userId === currentUser?.id) && (
-                              <button className="btn btn-danger" style={{ marginLeft: 8 }} onClick={() => handleCancel(reservation.id)}>
+                              <button
+                                className="btn btn-danger"
+                                style={{ marginLeft: 8 }}
+                                onClick={() => handleCancel(reservation.id)}
+                              >
                                 Zrušit
                               </button>
                             )}
