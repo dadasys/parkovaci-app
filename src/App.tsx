@@ -143,9 +143,16 @@ export default function App() {
     } else setLoginError("Neplatné jméno nebo heslo");
   };
 
-  // 🛠 Nová verze handleReserve — ukládá čistý YYYY-MM-DD string
+  // 🛠 Nová verze handleReserve — ukládá čistý YYYY-MM-DD string + DEBUG
   const handleReserve = async (place: number, day: string, time: string, date: Date) => {
     if (!currentUser) return;
+
+    // 🟡 DEBUG výpis
+    console.log("📅 Rezervace kliknuta:");
+    console.log("Původní objekt Date:", date);
+    console.log("toString():", date.toString());
+    console.log("toISOString():", date.toISOString());
+    console.log("YYYY-MM-DD:", `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`);
 
     const workingDiff = getWorkingDaysDiff(new Date(), date);
     if (!currentUser.priority && workingDiff > 2) {
@@ -157,14 +164,15 @@ export default function App() {
     const exists = reservations.find((r) => r.place === place && r.time === key);
     if (exists) return;
 
-    // 📅 Sestavení čistého YYYY-MM-DD ručně
+    // 📅 čistý YYYY-MM-DD
     const localDateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+    console.log("⬆️ Ukládám do Supabase:", localDateStr);
 
     const { data: newData, error } = await supabase.from("reservations").insert([{
       place,
       time: key,
       userId: currentUser.id,
-      date: localDateStr, // ⬅️ žádné ISO, žádný čas
+      date: localDateStr,
       time_slot: time
     }]).select();
 
