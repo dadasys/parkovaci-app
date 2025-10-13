@@ -143,17 +143,18 @@ export default function App() {
     } else setLoginError("Neplatné jméno nebo heslo");
   };
 
-  // 🛠 Opravená verze handleReserve
+  // ✅ Opravená verze handleReserve
   const handleReserve = async (place: number, day: string, time: string, date: Date) => {
     if (!currentUser) return;
 
-    // ✅ Normalizace na poledne kvůli správnému výpočtu pracovních dnů
     const today = new Date();
-    today.setHours(12, 0, 0, 0);
-    const normalizedTarget = new Date(date);
-    normalizedTarget.setHours(12, 0, 0, 0);
+    today.setHours(0, 0, 0, 0);
+    const target = new Date(date);
+    target.setHours(0, 0, 0, 0);
 
-    const workingDiff = getWorkingDaysDiff(today, normalizedTarget);
+    const workingDiff = getWorkingDaysDiff(today, target);
+    console.log("DEBUG workingDiff", workingDiff, "priority:", currentUser.priority);
+
     if (!currentUser.priority && workingDiff > 2) {
       alert("Neprioritní uživatel může rezervovat maximálně 2 pracovní dny dopředu.");
       return;
