@@ -143,17 +143,17 @@ export default function App() {
     } else setLoginError("Neplatné jméno nebo heslo");
   };
 
-  // ✅ Opravená verze handleReserve
+  // 🛠 handleReserve s DEBUG výpisem workingDiff
   const handleReserve = async (place: number, day: string, time: string, date: Date) => {
     if (!currentUser) return;
 
     const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const target = new Date(date);
-    target.setHours(0, 0, 0, 0);
+    today.setHours(12, 0, 0, 0);
+    const normalizedTarget = new Date(date);
+    normalizedTarget.setHours(12, 0, 0, 0);
 
-    const workingDiff = getWorkingDaysDiff(today, target);
-    console.log("DEBUG workingDiff", workingDiff, "priority:", currentUser.priority);
+    const workingDiff = getWorkingDaysDiff(today, normalizedTarget);
+    console.log("🧪 DEBUG workingDiff:", workingDiff, "target:", normalizedTarget.toDateString());
 
     if (!currentUser.priority && workingDiff > 2) {
       alert("Neprioritní uživatel může rezervovat maximálně 2 pracovní dny dopředu.");
