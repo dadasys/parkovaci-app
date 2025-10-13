@@ -52,7 +52,7 @@ function getWeekRangeLabel(weekOffset: number) {
   return `${monday.toLocaleDateString("cs-CZ")} - ${friday.toLocaleDateString("cs-CZ")}`;
 }
 
-// 🟡 Pomocná funkce: rozdíl v pracovních dnech
+// 🟡 Pomocná funkce: rozdíl v pracovních dnech mezi dvěma daty
 function getWorkingDaysDiff(from: Date, to: Date): number {
   let count = 0;
   const d = new Date(from);
@@ -70,15 +70,7 @@ function getWorkingDaysDiff(from: Date, to: Date): number {
   return count;
 }
 
-function LoginView({
-  onLogin,
-  error,
-  users,
-}: {
-  onLogin: (u: string, p: string) => void;
-  error: string | null;
-  users: User[];
-}) {
+function LoginView({ onLogin, error, users }: { onLogin: (u: string, p: string) => void; error: string | null; users: User[] }) {
   const [username, setUsername] = useState(users[0]?.username || "");
   const [password, setPassword] = useState("");
 
@@ -88,7 +80,7 @@ function LoginView({
   };
 
   useEffect(() => {
-    if (users.length && !users.find((u) => u.username === username)) {
+    if (users.length && !users.find(u => u.username === username)) {
       setUsername(users[0].username);
     }
   }, [users]);
@@ -98,12 +90,7 @@ function LoginView({
       <div className="card" style={{ maxWidth: 460, margin: "60px auto" }}>
         <h2 style={{ textAlign: "center" }}>Přihlášení</h2>
         <form onSubmit={handleSubmit}>
-          <select
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            className="input"
-            style={{ marginBottom: 12 }}
-          >
+          <select value={username} onChange={(e) => setUsername(e.target.value)} className="input" style={{ marginBottom: 12 }}>
             {users.map((u) => (
               <option key={u.id} value={u.username}>
                 {u.username} {u.name ? `(${u.name})` : ""}
@@ -121,18 +108,7 @@ function LoginView({
           <button type="submit" className="btn" style={{ width: "100%" }}>
             Přihlásit
           </button>
-          {error && (
-            <div
-              style={{
-                color: "#ef4444",
-                marginTop: 10,
-                textAlign: "center",
-                fontWeight: 600,
-              }}
-            >
-              {error}
-            </div>
-          )}
+          {error && <div style={{ color: "#ef4444", marginTop: 10, textAlign: "center", fontWeight: 600 }}>{error}</div>}
         </form>
       </div>
     </div>
@@ -170,7 +146,7 @@ export default function App() {
   const handleReserve = async (place: number, day: string, time: string, date: Date) => {
     if (!currentUser) return;
 
-    // 🛠 Kontrola 2 pracovních dnů pro neprioritní uživatele
+    // 🟡 Kontrola max. 2 pracovních dnů pro neprioritní
     const workingDiff = getWorkingDaysDiff(new Date(), date);
     if (!currentUser.priority && workingDiff > 2) {
       alert("Neprioritní uživatel může rezervovat maximálně 2 pracovní dny dopředu.");
@@ -179,26 +155,21 @@ export default function App() {
 
     const key = `${day} ${time} ${weekOffset}`;
     const exists = reservations.find((r) => r.place === place && r.time === key);
-    if (exists) return;
+    if (exists) {
+      alert("Tento termín je již obsazen.");
+      return;
+    }
 
-    // 📅 Uložíme čistý YYYY-MM-DD string
-    const localDateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(
-      2,
-      "0"
-    )}-${String(date.getDate()).padStart(2, "0")}`;
+    // 📅 čistý YYYY-MM-DD
+    const localDateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 
-    const { data: newData, error } = await supabase
-      .from("reservations")
-      .insert([
-        {
-          place,
-          time: key,
-          userId: currentUser.id,
-          date: localDateStr,
-          time_slot: time,
-        },
-      ])
-      .select();
+    const { data: newData, error } = await supabase.from("reservations").insert([{
+      place,
+      time: key,
+      userId: currentUser.id,
+      date: localDateStr,
+      time_slot: time
+    }]).select();
 
     if (error) {
       alert(error.message);
@@ -207,63 +178,36 @@ export default function App() {
     if (newData) setReservations([...reservations, ...(newData as Reservation[])]);
   };
 
-  if (view === "login")
-    return <LoginView onLogin={handleLogin} error={loginError} users={users} />;
+  if (view === "login") return <LoginView onLogin={handleLogin} error={loginError} users={users} />;
 
   return (
     <div className="container">
       <div className="header">
         <h2>Vítej, {currentUser?.name}</h2>
         <div>
-          <button
-            className="btn"
-            onClick={() => {
-              setCurrentUser(null);
-              setView("login");
-            }}
-          >
-            Odhlásit
-          </button>
+          <button className="btn" onClick={() => { setCurrentUser(null); setView("login"); }}>Odhlásit</button>
         </div>
       </div>
       <div className="card">
         <h3>Rezervace parkovacích míst</h3>
         <div className="weekbar">
-          <button className="btn" onClick={() => setWeekOffset(weekOffset - 1)}>
-            ◀️ Předchozí týden
-          </button>
+          <button className="btn" onClick={() => setWeekOffset(weekOffset - 1)}>◀️ Předchozí týden</button>
           <strong>{getWeekRangeLabel(weekOffset)}</strong>
-          <button className="btn" onClick={() => setWeekOffset(weekOffset + 1)}>
-            Následující týden ▶️
-          </button>
+          <button className="btn" onClick={() => setWeekOffset(weekOffset + 1)}>Následující týden ▶️</button>
         </div>
         <div className="grid" style={{ gridTemplateColumns: `repeat(${days.length}, 1fr)` }}>
           {days.map((day, i) => (
             <div key={day} className="card" style={{ padding: 10 }}>
-              <h4 style={{ textAlign: "center" }}>
-                {day} {weekDates[i].toLocaleDateString("cs-CZ")}
-              </h4>
+              <h4 style={{ textAlign: "center" }}>{day} {weekDates[i].toLocaleDateString("cs-CZ")}</h4>
               {times.map((time) => (
                 <div key={time} className="slot">
                   <strong>{time}</strong>
                   {places.map((place) => {
-                    const reservation = reservations.find(
-                      (r) => r.place === place && r.time === `${day} ${time} ${weekOffset}`
-                    );
-                    const owner = reservation ? users.find((u) => u.id === reservation.userId) : null;
+                    const reservation = reservations.find((r) => r.place === place && r.time === `${day} ${time} ${weekOffset}`);
+                    const owner = reservation ? users.find(u => u.id === reservation.userId) : null;
                     const isPriority = owner?.priority;
                     return (
-                      <div
-                        key={place}
-                        className="slot"
-                        style={{
-                          background: reservation
-                            ? isPriority
-                              ? "#fde68a"
-                              : "#fef9c3"
-                            : "#fff",
-                        }}
-                      >
+                      <div key={place} className="slot" style={{ background: reservation ? (isPriority ? "#fde68a" : "#fef9c3") : "#fff" }}>
                         {!reservation ? (
                           <>
                             <span style={{ marginRight: 6 }}>{place}</span>
