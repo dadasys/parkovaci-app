@@ -21,15 +21,15 @@ interface Reservation {
   place: number;
   time: string;
   userId: number;
-  date?: string;
-  time_slot?: string;
+  date: string;        // ← důležité
+  time_slot: string;
 }
 
 const times = ["7-13", "13-00"] as const;
 const days = ["Pondělí", "Úterý", "Středa", "Čtvrtek", "Pátek"] as const;
 const places = [1, 2, 3, 4, 5, 6];
 
-// 🟡 Výpočet pracovního týdne — nastavíme vždy poledne, aby UTC nemělo vliv
+// Výpočet pracovního týdne (Po–Pá), každý den ve 12:00 → žádný UTC posun
 function getWeekDates(weekOffset: number) {
   const today = new Date();
   const day = today.getDay();
@@ -52,7 +52,7 @@ function getWeekRangeLabel(weekOffset: number) {
   return `${monday.toLocaleDateString("cs-CZ")} - ${friday.toLocaleDateString("cs-CZ")}`;
 }
 
-// 🟡 Formátování na YYYY-MM-DD bez časového pásma
+// Pomocná funkce: YYYY-MM-DD
 function formatLocalISO(date: Date) {
   const y = date.getFullYear();
   const m = String(date.getMonth() + 1).padStart(2, "0");
@@ -60,7 +60,7 @@ function formatLocalISO(date: Date) {
   return `${y}-${m}-${d}`;
 }
 
-// Pomocná funkce: rozdíl v pracovních dnech mezi dvěma daty
+// Počet pracovních dní pro omezení rezervací
 function getWorkingDaysDiff(from: Date, to: Date): number {
   let count = 0;
   const d = new Date(from);
@@ -71,9 +71,7 @@ function getWorkingDaysDiff(from: Date, to: Date): number {
   while (d < target) {
     d.setDate(d.getDate() + 1);
     const day = d.getDay();
-    if (day !== 0 && day !== 6) {
-      count++;
-    }
+    if (day !== 0 && day !== 6) count++;
   }
   return count;
 }
@@ -154,29 +152,24 @@ export default function App() {
   const handleReserve = async (place: number, day: string, time: string, date: Date) => {
     if (!currentUser) return;
 
-    // 🟡 DEBUG výpis — tady uvidíme, co se ukládá
-    console.log("📅 DEBUG — Rezervace kliknuta:");
-    console.log("📅 Původní objekt Date:", date);
-    console.log("📅 toString():", date.toString());
-    console.log("📅 toISOString():", date.toISOString());
-    console.log("📅 Lokální R/M/D:", date.getFullYear(), date.getMonth() + 1, date.getDate());
-    console.log("📅 Ukládáme jako:", formatLocalISO(date));
-
     const workingDiff = getWorkingDaysDiff(new Date(), date);
     if (!currentUser.priority && workingDiff > 2) {
       alert("Neprioritní uživatel může rezervovat maximálně 2 pracovní dny dopředu.");
       return;
     }
 
-    const key = `${day} ${time} ${weekOffset}`;
-    const exists = reservations.find((r) => r.place === place && r.time === key);
+    const localDateStr = formatLocalISO(date);
+
+    const exists = reservations.find(
+      (r) => r.place === place && r.date === localDateStr && r.time_slot === time
+    );
     if (exists) return;
 
     const { data: newData, error } = await supabase.from("reservations").insert([{
       place,
-      time: key,
+      time: `${day} ${time}`,   // weekOffset už neukládáme
       userId: currentUser.id,
-      date: formatLocalISO(date),
+      date: localDateStr,
       time_slot: time
     }]).select();
 
@@ -204,44 +197,50 @@ export default function App() {
           <strong>{getWeekRangeLabel(weekOffset)}</strong>
           <button className="btn" onClick={() => setWeekOffset(weekOffset + 1)}>Následující týden ▶️</button>
         </div>
+
         <div className="grid" style={{ gridTemplateColumns: `repeat(${days.length}, 1fr)` }}>
-          {days.map((day, i) => (
-            <div key={day} className="card" style={{ padding: 10 }}>
-              <h4 style={{ textAlign: "center" }}>{day} {weekDates[i].toLocaleDateString("cs-CZ")}</h4>
-              {times.map((time) => (
-                <div key={time} className="slot">
-                  <strong>{time}</strong>
-                  {places.map((place) => {
-                    const reservation = reservations.find((r) => r.place === place && r.time === `${day} ${time} ${weekOffset}`);
-                    const owner = reservation ? users.find(u => u.id === reservation.userId) : null;
-                    const isPriority = owner?.priority;
-                    return (
-                      <div key={place} className="slot" style={{ background: reservation ? (isPriority ? "#fde68a" : "#fef9c3") : "#fff" }}>
-                        {!reservation ? (
-                          <>
-                            <span style={{ marginRight: 6 }}>{place}</span>
-                            <button
-                              className="btn btn-success"
-                              onClick={() => handleReserve(place, day, time, weekDates[i])}
-                            >
-                              Rezervovat
-                            </button>
-                          </>
-                        ) : (
-                          <>
+          {days.map((day, i) => {
+            const dayDate = weekDates[i];
+            const dayISO = formatLocalISO(dayDate);
+
+            return (
+              <div key={day} className="card" style={{ padding: 10 }}>
+                <h4 style={{ textAlign: "center" }}>{day} {dayDate.toLocaleDateString("cs-CZ")}</h4>
+                {times.map((time) => (
+                  <div key={time} className="slot">
+                    <strong>{time}</strong>
+                    {places.map((place) => {
+                      const reservation = reservations.find(
+                        (r) => r.place === place && r.date === dayISO && r.time_slot === time
+                      );
+                      const owner = reservation ? users.find(u => u.id === reservation.userId) : null;
+                      const isPriority = owner?.priority;
+                      return (
+                        <div key={place} className="slot" style={{ background: reservation ? (isPriority ? "#fde68a" : "#fef9c3") : "#fff" }}>
+                          {!reservation ? (
+                            <>
+                              <span style={{ marginRight: 6 }}>{place}</span>
+                              <button
+                                className="btn btn-success"
+                                onClick={() => handleReserve(place, day, time, dayDate)}
+                              >
+                                Rezervovat
+                              </button>
+                            </>
+                          ) : (
                             <span>
                               {owner?.name} ({owner?.spz}){" "}
                               {isPriority && <span className="badge">prioritní</span>}
                             </span>
-                          </>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              ))}
-            </div>
-          ))}
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                ))}
+              </div>
+            );
+          })}
         </div>
       </div>
     </div>
