@@ -29,7 +29,7 @@ const times = ["7-13", "13-00"] as const;
 const days = ["Pondělí", "Úterý", "Středa", "Čtvrtek", "Pátek"] as const;
 const places = [1, 2, 3, 4, 5, 6];
 
-// 🟡 Výpočet pracovního týdne — nastavíme vždy poledne, aby UTC nemělo vliv
+// Výpočet pracovního týdne — nastavíme vždy poledne, aby UTC nemělo vliv
 function getWeekDates(weekOffset: number) {
   const today = new Date();
   const day = today.getDay();
@@ -52,7 +52,7 @@ function getWeekRangeLabel(weekOffset: number) {
   return `${monday.toLocaleDateString("cs-CZ")} - ${friday.toLocaleDateString("cs-CZ")}`;
 }
 
-// 🟡 Pomocná funkce: rozdíl v pracovních dnech mezi dvěma daty
+// Rozdíl v pracovních dnech mezi dvěma daty
 function getWorkingDaysDiff(from: Date, to: Date): number {
   let count = 0;
   const d = new Date(from);
@@ -143,11 +143,17 @@ export default function App() {
     } else setLoginError("Neplatné jméno nebo heslo");
   };
 
+  // 🛠 Opravená verze handleReserve
   const handleReserve = async (place: number, day: string, time: string, date: Date) => {
     if (!currentUser) return;
 
-    // 🟡 Kontrola max. 2 pracovních dnů pro neprioritní
-    const workingDiff = getWorkingDaysDiff(new Date(), date);
+    // ✅ Normalizace na poledne kvůli správnému výpočtu pracovních dnů
+    const today = new Date();
+    today.setHours(12, 0, 0, 0);
+    const normalizedTarget = new Date(date);
+    normalizedTarget.setHours(12, 0, 0, 0);
+
+    const workingDiff = getWorkingDaysDiff(today, normalizedTarget);
     if (!currentUser.priority && workingDiff > 2) {
       alert("Neprioritní uživatel může rezervovat maximálně 2 pracovní dny dopředu.");
       return;
@@ -155,12 +161,8 @@ export default function App() {
 
     const key = `${day} ${time} ${weekOffset}`;
     const exists = reservations.find((r) => r.place === place && r.time === key);
-    if (exists) {
-      alert("Tento termín je již obsazen.");
-      return;
-    }
+    if (exists) return;
 
-    // 📅 čistý YYYY-MM-DD
     const localDateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 
     const { data: newData, error } = await supabase.from("reservations").insert([{
