@@ -21,15 +21,14 @@ interface Reservation {
   place: number;
   time: string;
   userId: number;
-  date: string;        // ← důležité
-  time_slot: string;
+  date: string;         // ⬅️ důležité — datum rezervace
+  time_slot: string;    // ⬅️ dopoledne/odpoledne
 }
 
 const times = ["7-13", "13-00"] as const;
 const days = ["Pondělí", "Úterý", "Středa", "Čtvrtek", "Pátek"] as const;
 const places = [1, 2, 3, 4, 5, 6];
 
-// Výpočet pracovního týdne (Po–Pá), každý den ve 12:00 → žádný UTC posun
 function getWeekDates(weekOffset: number) {
   const today = new Date();
   const day = today.getDay();
@@ -50,30 +49,6 @@ function getWeekRangeLabel(weekOffset: number) {
   const monday = dates[0];
   const friday = dates[4];
   return `${monday.toLocaleDateString("cs-CZ")} - ${friday.toLocaleDateString("cs-CZ")}`;
-}
-
-// Pomocná funkce: YYYY-MM-DD
-function formatLocalISO(date: Date) {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, "0");
-  const d = String(date.getDate()).padStart(2, "0");
-  return `${y}-${m}-${d}`;
-}
-
-// Počet pracovních dní pro omezení rezervací
-function getWorkingDaysDiff(from: Date, to: Date): number {
-  let count = 0;
-  const d = new Date(from);
-  d.setHours(0, 0, 0, 0);
-  const target = new Date(to);
-  target.setHours(0, 0, 0, 0);
-
-  while (d < target) {
-    d.setDate(d.getDate() + 1);
-    const day = d.getDay();
-    if (day !== 0 && day !== 6) count++;
-  }
-  return count;
 }
 
 function LoginView({ onLogin, error, users }: { onLogin: (u: string, p: string) => void; error: string | null; users: User[] }) {
@@ -152,22 +127,11 @@ export default function App() {
   const handleReserve = async (place: number, day: string, time: string, date: Date) => {
     if (!currentUser) return;
 
-    const workingDiff = getWorkingDaysDiff(new Date(), date);
-    if (!currentUser.priority && workingDiff > 2) {
-      alert("Neprioritní uživatel může rezervovat maximálně 2 pracovní dny dopředu.");
-      return;
-    }
-
-    const localDateStr = formatLocalISO(date);
-
-    const exists = reservations.find(
-      (r) => r.place === place && r.date === localDateStr && r.time_slot === time
-    );
-    if (exists) return;
+    const localDateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 
     const { data: newData, error } = await supabase.from("reservations").insert([{
       place,
-      time: `${day} ${time}`,   // weekOffset už neukládáme
+      time: `${day} ${time} ${weekOffset}`,
       userId: currentUser.id,
       date: localDateStr,
       time_slot: time
@@ -197,21 +161,18 @@ export default function App() {
           <strong>{getWeekRangeLabel(weekOffset)}</strong>
           <button className="btn" onClick={() => setWeekOffset(weekOffset + 1)}>Následující týden ▶️</button>
         </div>
-
         <div className="grid" style={{ gridTemplateColumns: `repeat(${days.length}, 1fr)` }}>
           {days.map((day, i) => {
-            const dayDate = weekDates[i];
-            const dayISO = formatLocalISO(dayDate);
-
+            const currentDateStr = `${weekDates[i].getFullYear()}-${String(weekDates[i].getMonth() + 1).padStart(2, '0')}-${String(weekDates[i].getDate()).padStart(2, '0')}`;
             return (
               <div key={day} className="card" style={{ padding: 10 }}>
-                <h4 style={{ textAlign: "center" }}>{day} {dayDate.toLocaleDateString("cs-CZ")}</h4>
+                <h4 style={{ textAlign: "center" }}>{day} {weekDates[i].toLocaleDateString("cs-CZ")}</h4>
                 {times.map((time) => (
                   <div key={time} className="slot">
                     <strong>{time}</strong>
                     {places.map((place) => {
                       const reservation = reservations.find(
-                        (r) => r.place === place && r.date === dayISO && r.time_slot === time
+                        (r) => r.place === place && r.time_slot === time && r.date === currentDateStr
                       );
                       const owner = reservation ? users.find(u => u.id === reservation.userId) : null;
                       const isPriority = owner?.priority;
@@ -222,7 +183,7 @@ export default function App() {
                               <span style={{ marginRight: 6 }}>{place}</span>
                               <button
                                 className="btn btn-success"
-                                onClick={() => handleReserve(place, day, time, dayDate)}
+                                onClick={() => handleReserve(place, day, time, weekDates[i])}
                               >
                                 Rezervovat
                               </button>
