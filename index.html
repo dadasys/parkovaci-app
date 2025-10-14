@@ -3,16 +3,62 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Přesměrování…</title>
-    <meta http-equiv="refresh" content="0; url=https://hhsparking.lovable.app/" />
+    <title>Aplikace byla přesunuta</title>
+    <meta http-equiv="refresh" content="3; url=https://hhsparking.lovable.app/" />
+    <style>
+      body {
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+        background: #f3f4f6;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        margin: 0;
+        text-align: center;
+        color: #1e3a8a;
+      }
+      .box {
+        background: #fff;
+        padding: 30px 40px;
+        border-radius: 12px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        max-width: 400px;
+      }
+      h1 {
+        font-size: 20px;
+        margin-top: 0;
+      }
+      p {
+        font-size: 16px;
+      }
+      a {
+        display: inline-block;
+        margin-top: 12px;
+        background: #2563eb;
+        color: white;
+        padding: 10px 16px;
+        border-radius: 8px;
+        text-decoration: none;
+        font-weight: 600;
+      }
+      a:hover {
+        background: #1e40af;
+      }
+    </style>
   </head>
   <body>
-    <p>Pokud nebudete automaticky přesměrováni, klikněte sem: 
-      <a href="https://hhsparking.lovable.app/">https://hhsparking.lovable.app/</a>
-    </p>
+    <div class="box">
+      <h1>📢 Aplikace byla přesunuta</h1>
+      <p>Nyní probíhá přesměrování na novou adresu.</p>
+      <p>Pokud k přesměrování nedojde automaticky, klikněte na tlačítko níže:</p>
+      <a href="https://hhsparking.lovable.app/">Přejít na novou aplikaci</a>
+    </div>
+
     <script>
-      // Záložní přesměrování pro jistotu (např. u starších prohlížečů)
-      window.location.href = "https://hhsparking.lovable.app/";
+      // Záložní přesměrování přes JavaScript
+      setTimeout(() => {
+        window.location.href = "https://hhsparking.lovable.app/";
+      }, 3000);
     </script>
   </body>
 </html>
